@@ -20,10 +20,12 @@ From repo root. `flutter` not on PATH -> `~/.local/share/flutter/bin`.
 
 | Change | Run |
 | --- | --- |
-| Dart code | `dart format lib test`; `flutter analyze`; `flutter test` |
+| Dart code | `dart format lib test`; `flutter analyze`; native build (below); `flutter test` |
 | UI behaviour | above + widget test for change |
-| Linux runner, native/FFI, deps | above + `flutter build linux` |
+| Linux runner, native/FFI, deps | above + `flutter build linux`; confirm `build/linux/x64/release/bundle/lib/libblur_native.so` |
 | `.md` only | referenced paths exist; rule 6 |
+
+Native build (tests load `build/native/libblur_native.so`): `cmake -S native -B build/native -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build/native`
 
 ## Validation report
 - Changed: files

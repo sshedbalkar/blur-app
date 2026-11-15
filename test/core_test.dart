@@ -7,6 +7,7 @@ import 'package:blur_app/core/feature/feature.dart';
 import 'package:blur_app/core/feature/feature_registry.dart';
 import 'package:blur_app/core/logging/app_logger.dart';
 import 'package:blur_app/core/settings/app_settings.dart';
+import 'package:blur_app/ui/home_screen.dart' show stepTempPath;
 import 'package:flutter_test/flutter_test.dart';
 
 class FakeFeature implements Feature {
@@ -65,6 +66,12 @@ void main() {
       expect(r.isOk, isTrue);
       expect(f.lastParams, {'amount': 5.0, 'fast': true, 'mode': 'a'});
     });
+  });
+
+  test('stepTempPath keeps the output extension', () {
+    expect(stepTempPath('/a/b.c/out.png', 1), '/a/b.c/out.step1.tmp.png');
+    expect(stepTempPath('/a/b.c/out', 2), '/a/b.c/out.step2.tmp');
+    expect(stepTempPath('/a/.hidden', 1), '/a/.hidden.step1.tmp');
   });
 
   group('FeatureRegistry', () {

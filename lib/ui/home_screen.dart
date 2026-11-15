@@ -9,6 +9,16 @@ import '../main.dart';
 import 'param_control.dart';
 import 'settings_screen.dart';
 
+/// Temporary file for an intermediate step's result. Keeps the output's
+/// extension, because features choose the file format from it.
+String stepTempPath(String output, int step) {
+  final dot = output.lastIndexOf('.');
+  final hasExtension = dot > output.lastIndexOf('/') + 1;
+  return hasExtension
+      ? '${output.substring(0, dot)}.step$step.tmp${output.substring(dot)}'
+      : '$output.step$step.tmp';
+}
+
 /// Main workflow: pick a file, describe the goal, review and adjust the
 /// planned commands, run them.
 class HomeScreen extends StatefulWidget {
@@ -144,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
       for (var i = 0; i < _commands.length; i++) {
         final command = _commands[i];
         final isLast = i == _commands.length - 1;
-        final target = isLast ? output : '$output.step${i + 1}.tmp';
+        final target = isLast ? output : stepTempPath(output, i + 1);
         if (!isLast) temps.add(target);
         _setStatus('Running ${command.feature.name}…');
         _s.logger.info('command_start', command.toJson());

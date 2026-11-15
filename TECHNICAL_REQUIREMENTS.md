@@ -22,6 +22,8 @@ Each names need served (TR-3). Code locations: `context/ROUTING.md`.
 ## TR-4: Front-end stack
 - Flutter (Dart), Linux desktop, Material. Why: D-1.
 - Complicated/performance-critical feature work -> native via `dart:ffi`. Rest in Dart.
+- Native engine: C++17 + OpenCV (system package), one shared lib `libblur_native.so`, bundled in app `lib/`.
+- Native calls run on background isolate; UI never blocked.
 - Serves: all UX; dev speed.
 
 ## TR-5: Security
