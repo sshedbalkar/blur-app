@@ -28,8 +28,8 @@ Chosen for speed + format coverage over self-contained C++. Cost: app depends on
 
 ## D-9: Classical deblur methods
 - `sharpen`: unsharp mask. Default: safe when blur cause unknown. Not a true inverse.
-- `focus`/`motion`: Wiener deconvolution, known kernel (disk / line). Strength 0-100 -> noise-to-signal 1e-1..1e-4.
-- Deconvolution details found necessary by test: mirror-pad + fade padding to mean (else edges ring across image); scale by (1+nsr) (else image darkens); line kernel one pixel wide (anti-aliased line smears sideways, fails).
+- `focus`/`motion`: Wiener deconvolution, known kernel (disk / line). Chosen: fast, one-pass, few params. Blind kernel estimation not attempted.
+- Found necessary by test (spec: TR-8): fade padding to mean, else edges ring across image at high strength; (1+nsr) scale, else image darkens up to 9%; line kernel one pixel wide, since anti-aliased 3 px line models sideways blur and fails.
 - Kernel mismatch + high strength -> artefacts. Inherent; user lowers strength.
 
 ## D-10: Neural deblur (decided, not built)
@@ -37,3 +37,6 @@ Chosen for speed + format coverage over self-contained C++. Cost: app depends on
 - Models: app downloads default + user adds own; all in one local folder; switchable; last used remembered.
 - App recommends best model(s) per task, with reason message.
 - Method stays user/AI-changeable; classical stays default.
+
+## D-11: Core docs = complete spec
+Four core docs must suffice to recreate project (AGENTS.md rule 2). Consequence: UX doc carries screen layouts + exact messages; technical doc carries interfaces, formats, algorithms. `context/` stays pointers only.

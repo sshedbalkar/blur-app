@@ -6,8 +6,8 @@ Stack: Flutter 3.50 / Dart 3.14, Linux desktop, `material_ui`, `http`, `ffi`. Na
 
 ## Docs
 - rules, validation, report format, `.md` writing style -> AGENTS.md
-- user-facing behaviour, status -> UX_REQUIREMENTS.md (UX-n)
-- constraints -> TECHNICAL_REQUIREMENTS.md (TR-n)
+- user-facing behaviour, screens, messages, status -> UX_REQUIREMENTS.md (UX-n)
+- architecture, interfaces, formats, algorithms -> TECHNICAL_REQUIREMENTS.md (TR-n)
 - decisions -> DESIGN.md (D-n)
 
 ## Source

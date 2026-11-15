@@ -6,10 +6,11 @@ Start: `context/ROUTING.md`. Source = truth; map only points.
 
 ## Rules
 1. Clarity >95% before any project/repo change. Lower -> ask.
-2. Significant design/UX change or durable decision -> update matching doc, same change:
-   - `UX_REQUIREMENTS.md`: user-facing behaviour, status
-   - `TECHNICAL_REQUIREMENTS.md`: constraints + need served
-   - `DESIGN.md`: decisions + why
+2. **Major requirement: core docs = complete spec.** Core docs: `AGENTS.md`, `DESIGN.md`, `TECHNICAL_REQUIREMENTS.md`, `UX_REQUIREMENTS.md`.
+   - Test: capable model (e.g. Opus 5.5) given only these four files recreates project with all main features, minimal UX loss.
+   - Every major change (feature, behaviour, UI, param, default, algorithm, interface, dependency, decision) updates them in same change.
+   - Split: `UX_REQUIREMENTS.md` = screens, flows, messages, params, status. `TECHNICAL_REQUIREMENTS.md` = architecture, interfaces, formats, algorithms, constraints + need served. `DESIGN.md` = decisions + why.
+   - Docs vs source disagree -> source wins; fix docs.
 3. Structure/entry-point/convention change -> update `context/`, same change.
 4. Validate every change. End response with validation report.
 5. Nothing speculative. Each technical addition serves UX/product requirement, debugging, or optimization (TR-3). Else omit.
@@ -24,6 +25,7 @@ From repo root. `flutter` not on PATH -> `~/.local/share/flutter/bin`.
 | UI behaviour | above + widget test for change |
 | Linux runner, native/FFI, deps | above + `flutter build linux`; confirm `build/linux/x64/release/bundle/lib/libblur_native.so` |
 | `.md` only | referenced paths exist; rule 6 |
+| Any major change | rule 2 test: changed behaviour recreatable from core docs alone |
 
 Native build (tests load `build/native/libblur_native.so`): `cmake -S native -B build/native -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build/native`
 
