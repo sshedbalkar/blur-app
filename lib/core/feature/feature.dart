@@ -136,11 +136,16 @@ class FeatureContext {
 }
 
 class FeatureResult {
-  const FeatureResult.ok(String this.outputPath) : error = null;
-  const FeatureResult.failed(String this.error) : outputPath = null;
+  const FeatureResult.ok(String this.outputPath, {this.note}) : error = null;
+  const FeatureResult.failed(String this.error)
+    : outputPath = null,
+      note = null;
 
   final String? outputPath;
   final String? error;
+
+  /// Something the user should know about a successful run, shown after it.
+  final String? note;
 
   bool get isOk => error == null;
 }

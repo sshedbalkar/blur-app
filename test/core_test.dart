@@ -7,10 +7,19 @@ import 'package:blur_app/core/feature/feature.dart';
 import 'package:blur_app/core/feature/feature_registry.dart';
 import 'package:blur_app/core/logging/app_logger.dart';
 import 'package:blur_app/core/settings/app_settings.dart';
+import 'package:blur_app/features/deblur/neural_models.dart';
 import 'package:blur_app/ui/home_screen.dart' show stepTempPath;
+import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
 class FakeFeature implements Feature {
+  FakeFeature({this.note});
+
+  /// Reported with every successful run.
+  final String? note;
+
   @override
   String get id => 'fake';
   @override
@@ -37,7 +46,7 @@ class FakeFeature implements Feature {
     Map<String, Object> params,
   ) async {
     lastParams = params;
-    return FeatureResult.ok(context.outputPath);
+    return FeatureResult.ok(context.outputPath, note: note);
   }
 }
 
@@ -131,6 +140,14 @@ void main() {
         '/s/blur-app/logs',
       );
       expect(
+        AppSettings.defaults(env).modelDirectory,
+        '/home/u/.local/share/blur-app/models',
+      );
+      expect(
+        AppSettings.defaults({...env, 'XDG_DATA_HOME': '/d'}).modelDirectory,
+        '/d/blur-app/models',
+      );
+      expect(
         AppSettings.defaultFilePath(env),
         '/home/u/.config/blur-app/settings.json',
       );
@@ -141,7 +158,9 @@ void main() {
       final s = AppSettings.defaults(env)
         ..logDirectory = '/x'
         ..aiEnabled = false
-        ..aiModel = 'm';
+        ..aiModel = 'm'
+        ..modelDirectory = '/models'
+        ..neuralModel = 'n.onnx';
       s.save(path);
       expect(AppSettings.load(path, env).toJson(), s.toJson());
     });
@@ -156,6 +175,115 @@ void main() {
       final s = AppSettings.load(path, env);
       expect(s.aiEnabled, isTrue);
       expect(s.aiModel, 'm');
+    });
+  });
+
+  group('Neural models', () {
+    AppSettings settingsFor(String dir, [String chosen = '']) =>
+        AppSettings.defaults({'HOME': tmp.path})
+          ..modelDirectory = dir
+          ..neuralModel = chosen;
+
+    NeuralModel modelWith(List<int> content) => NeuralModel(
+      name: 'Tiny',
+      fileName: 'tiny.onnx',
+      url: 'https://example.invalid/tiny.onnx',
+      sha256: sha256.convert(content).toString(),
+      bytes: content.length,
+      reason: 'test',
+    );
+
+    test('lists only .onnx files, sorted; missing folder is empty', () {
+      expect(installedModels('${tmp.path}/none'), isEmpty);
+      for (final name in ['b.onnx', 'a.onnx', 'notes.txt', 'c.onnx.part']) {
+        File('${tmp.path}/$name').writeAsStringSync('x');
+      }
+      expect(installedModels(tmp.path), ['a.onnx', 'b.onnx']);
+    });
+
+    test('resolves chosen, then recommended, then first installed', () {
+      expect(
+        () => resolveModelPath(settingsFor(tmp.path)),
+        throwsA(
+          isA<NeuralModelException>().having(
+            (e) => e.message,
+            'message',
+            'No neural model is installed. Download one in Settings.',
+          ),
+        ),
+      );
+      File('${tmp.path}/b.onnx').writeAsStringSync('x');
+      File('${tmp.path}/a.onnx').writeAsStringSync('x');
+      expect(resolveModelPath(settingsFor(tmp.path)), '${tmp.path}/a.onnx');
+      final recommended = recommendedDeblurModel.fileName;
+      File('${tmp.path}/$recommended').writeAsStringSync('x');
+      expect(
+        resolveModelPath(settingsFor(tmp.path)),
+        '${tmp.path}/$recommended',
+      );
+      expect(
+        resolveModelPath(settingsFor(tmp.path, 'b.onnx')),
+        '${tmp.path}/b.onnx',
+      );
+      expect(
+        () => resolveModelPath(settingsFor(tmp.path, 'gone.onnx')),
+        throwsA(
+          isA<NeuralModelException>().having(
+            (e) => e.message,
+            'message',
+            contains('"gone.onnx" was not found'),
+          ),
+        ),
+      );
+    });
+
+    test('download verifies the checksum and reports progress', () async {
+      final content = List.generate(1000, (i) => i % 251);
+      final dir = '${tmp.path}/models';
+      final progress = <double>[];
+      await downloadModel(
+        modelWith(content),
+        dir,
+        client: MockClient((_) async => http.Response.bytes(content, 200)),
+        onProgress: progress.add,
+      );
+      expect(File('$dir/tiny.onnx').readAsBytesSync(), content);
+      expect(progress.last, 1.0);
+      expect(installedModels(dir), ['tiny.onnx']);
+    });
+
+    test('damaged or refused download leaves no file behind', () async {
+      final content = [1, 2, 3];
+      final dir = '${tmp.path}/models';
+      await expectLater(
+        downloadModel(
+          modelWith(content),
+          dir,
+          client: MockClient((_) async => http.Response.bytes([9, 9], 200)),
+        ),
+        throwsA(
+          isA<NeuralModelException>().having(
+            (e) => e.message,
+            'message',
+            contains('damaged'),
+          ),
+        ),
+      );
+      await expectLater(
+        downloadModel(
+          modelWith(content),
+          dir,
+          client: MockClient((_) async => http.Response('no', 404)),
+        ),
+        throwsA(
+          isA<NeuralModelException>().having(
+            (e) => e.message,
+            'message',
+            contains('404'),
+          ),
+        ),
+      );
+      expect(Directory(dir).listSync(), isEmpty);
     });
   });
 

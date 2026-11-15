@@ -23,11 +23,14 @@ From repo root. `flutter` not on PATH -> `~/.local/share/flutter/bin`.
 | --- | --- |
 | Dart code | `dart format lib test`; `flutter analyze`; native build (below); `flutter test` |
 | UI behaviour | above + widget test for change |
-| Linux runner, native/FFI, deps | above + `flutter build linux`; confirm `build/linux/x64/release/bundle/lib/libblur_native.so` |
+| Linux runner, native/FFI, deps | above + `flutter build linux`; confirm `build/linux/x64/release/bundle/lib/` has `libblur_native.so`, `libonnxruntime.so.1`, `libonnxruntime_providers_cuda.so` |
+| Neural engine | above + `flutter test test/neural_deblur_test.dart` with cuDNN on loader path; printed note must say GPU |
 | `.md` only | referenced paths exist; rule 6 |
 | Any major change | rule 2 test: changed behaviour recreatable from core docs alone |
 
-Native build (tests load `build/native/libblur_native.so`): `cmake -S native -B build/native -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build/native`
+Native build (tests load `build/native/libblur_native.so`; first run downloads ONNX Runtime, 234 MB): `cmake -S native -B build/native -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build/native`
+
+Neural test files (tests read `build/models/`; URL base `https://huggingface.co/opencv/deblurring_nafnet/resolve/f1f255116cdb628a311d2b5749871189a4639d84`): `mkdir -p build/models && curl -L -o build/models/deblurring_nafnet_2025may.onnx <base>/deblurring_nafnet_2025may.onnx && curl -L -o build/models/licenseplate_motion.jpg <base>/example_outputs/licenseplate_motion.jpg`
 
 ## Validation report
 - Changed: files

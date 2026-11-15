@@ -10,6 +10,8 @@ class AppSettings {
     required this.aiEnabled,
     required this.aiBaseUrl,
     required this.aiModel,
+    required this.modelDirectory,
+    required this.neuralModel,
   });
 
   /// Defaults for this machine, following the XDG base directory layout.
@@ -21,6 +23,8 @@ class AppSettings {
       // Ollama's default port; any OpenAI-compatible server works.
       aiBaseUrl: 'http://localhost:11434/v1',
       aiModel: '',
+      modelDirectory: '${_dataHome(env)}/blur-app/models',
+      neuralModel: '',
     );
   }
 
@@ -33,10 +37,20 @@ class AppSettings {
   /// Model name as the server knows it. Empty means none chosen yet.
   String aiModel;
 
+  /// Folder holding neural models (`.onnx` files), downloaded or user-added.
+  String modelDirectory;
+
+  /// File name, in [modelDirectory], of the neural model to use. Empty means
+  /// choose automatically.
+  String neuralModel;
+
   static String _home(Map<String, String> env) => env['HOME'] ?? '.';
 
   static String _stateHome(Map<String, String> env) =>
       _nonEmpty(env['XDG_STATE_HOME']) ?? '${_home(env)}/.local/state';
+
+  static String _dataHome(Map<String, String> env) =>
+      _nonEmpty(env['XDG_DATA_HOME']) ?? '${_home(env)}/.local/share';
 
   static String defaultFilePath([Map<String, String>? env]) {
     env ??= Platform.environment;
@@ -51,6 +65,8 @@ class AppSettings {
     'aiEnabled': aiEnabled,
     'aiBaseUrl': aiBaseUrl,
     'aiModel': aiModel,
+    'modelDirectory': modelDirectory,
+    'neuralModel': neuralModel,
   };
 
   /// Loads settings from [path], falling back to defaults for a missing or
@@ -70,6 +86,10 @@ class AppSettings {
         settings.aiBaseUrl = v;
       }
       if (json['aiModel'] case final String v) settings.aiModel = v;
+      if (json['modelDirectory'] case final String v when v.isNotEmpty) {
+        settings.modelDirectory = v;
+      }
+      if (json['neuralModel'] case final String v) settings.neuralModel = v;
     } on FormatException {
       // Corrupt file: keep defaults; it is rewritten on the next save.
     } on FileSystemException {

@@ -4,6 +4,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:blur_app/core/feature/feature.dart';
+import 'package:blur_app/core/settings/app_settings.dart';
 import 'package:blur_app/features/deblur/deblur_feature.dart';
 import 'package:blur_app/features/deblur/deblur_native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -81,7 +82,7 @@ void main() {
   late Directory tmp;
   late String input;
   late String output;
-  final feature = DeblurFeature();
+  final feature = DeblurFeature(AppSettings.defaults({'HOME': '/nonexistent'}));
   final sharp = blocks();
 
   setUpAll(() {

@@ -26,7 +26,7 @@ void main() {
   final settings = AppSettings.load(settingsPath);
   final logger = AppLogger(settings.logDirectory);
   final registry = FeatureRegistry();
-  registerBuiltinFeatures(registry);
+  registerBuiltinFeatures(registry, settings);
   logger.info('app_start', {
     'features': [for (final f in registry.all) f.id],
     'logFile': logger.currentFilePath,

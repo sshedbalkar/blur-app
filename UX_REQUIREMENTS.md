@@ -30,16 +30,29 @@ Status values: Done (works, tested) | Partial (see note) | Planned. Update on be
 ## UX-6: Remove blur (still images)
 - Feature id `deblur`, name "Remove blur".
 - Params (label; range; step; default):
-  - `method` "Method"; `sharpen` | `focus` | `motion`; default `sharpen`.
+  - `method` "Method"; `sharpen` | `focus` | `motion` | `neural`; default `sharpen`.
   - `radius` "Blur size (px)"; 0.5-50; 0.5; 3. Sharpen: softness radius. Focus: blur disk radius. Motion: smear length.
   - `angle` "Motion angle (°)"; 0-180; 1; 0. 0 = horizontal, 90 = vertical. Motion only.
   - `strength` "Strength"; 0-100; 1; 50. Higher = more detail, more noise/halos.
-- Method use: `sharpen` mild softness or unknown cause (safest); `focus` out-of-focus; `motion` straight-line camera shake / subject movement. `neural`: Planned (D-10).
+- Method use: `sharpen` mild softness or unknown cause (safest); `focus` out-of-focus; `motion` straight-line camera shake / subject movement; `neural` heavy or irregular real-world blur, size/direction unknown (slower).
+- `neural`: runs model from UX-7. Ignores `radius`, `angle`, `strength`. Any image size.
+  - Uses NVIDIA GPU when usable; else processor, automatically. Processor run adds note after "Done" line: "The neural model ran on the processor, which is much slower, because <reason>." Reasons: "cuDNN 9 is not installed" | "no usable NVIDIA GPU or CUDA 13 runtime was found" | "the GPU ran out of memory" | first line of engine error.
+  - Speed, RTX 4070 8 GB: 0.3 MP ~3 s, 12.8 MP ~47 s. Processor: 0.3 MP ~13 s.
+  - Errors: UX-7 model errors; "Cannot read model: <path>"; "The neural model failed: <detail>" (not a usable model).
 - Method chosen by AI from request or by user. App does not analyse image to choose.
 - User supplies blur size/angle; no automatic estimation.
 - 8/16-bit images; transparency preserved. Output format = output file extension.
 - Errors shown: "Cannot read image: <path>", "Cannot write image: <path>", "Only 8-bit and 16-bit images are supported", "Image processing failed: <detail>" (e.g. unknown output extension).
-- Status: Partial. Classical done; neural, video Planned.
+- Status: Partial. Classical + neural done; video Planned.
+
+## UX-7: Neural models
+- One local folder holds models (`.onnx`); default TR-6. Settings: folder, model choice, download.
+- App recommends one model per task with reason, shown in Settings: "Recommended for removing blur: NAFNet (92 MB). It removes camera-shake and motion blur without being told the blur size or direction, is a small download, and fits on an 8 GB graphics card."
+- "Download recommended model" fetches it into folder; nothing downloaded without that press.
+- User adds own: copy `.onnx` into folder. Must meet model contract (TR-9).
+- Model used by `neural`: "Neural model" setting if set; else recommended model if in folder; else first in folder by name. Choice remembered (saved setting).
+- Errors: "No neural model is installed. Download one in Settings."; "Neural model "<name>" was not found in <folder>. Choose another in Settings."
+- Status: Done.
 
 ## Screens
 
@@ -73,7 +86,7 @@ Suggest steps flow:
 Run flow:
 - Checks, in order: input exists else "Input file not found: "<path>""; output non-empty else "Enter where to save the result."; output != input else "Output must be a different file from the input."
 - Steps run in order as chain (D-5). Status "Running <feature name>…" per step.
-- Step fails -> "<feature name> failed: <error>", stop. Success -> "Done. Saved to <path>".
+- Step fails -> "<feature name> failed: <error>", stop. Success -> "Done. Saved to <path>", then one line per step note (TR-1) in step order.
 - UI stays responsive during run.
 
 ### Settings
@@ -81,13 +94,20 @@ Scrolling column. App bar title "Settings", back returns to Home (Home reflects 
 1. Heading "Logs": field "Log folder".
 2. Heading "AI model": switch "Use AI to suggest steps and settings"; field "Local AI server address" (helper: "Any OpenAI-compatible server, e.g. Ollama, llama.cpp, LM Studio"); row: field "Model" + button "Find models". AI fields disabled when switch off.
 3. Find models -> selectable chips, one per model; pick fills Model. Messages: "Found <n> model(s). Pick one below." / "The server is reachable but has no models." / error.
-4. Buttons "Save", "Restore defaults".
-5. Message line; errors in error colour.
+4. Heading "Neural blur removal": field "Model folder" (helper: "Put your own .onnx models here to use them"); row: field "Neural model" (helper: "Leave empty to choose automatically") + button "List models"; chips (below); recommendation text (UX-7), small; button "Download recommended model" (download icon).
+5. List models -> chips, one per `.onnx` in the typed folder; pick fills Neural model. Messages: "Found <n> model(s) in the folder. Pick one below." / "No models in that folder yet."
+6. Download recommended model, into the typed folder:
+   - Already there -> "NAFNet is already installed."; chips refreshed.
+   - Else "Downloading NAFNet… <n>%" (buttons List models, Find models, Download disabled), then "Downloaded NAFNet. Press Save to keep it selected."; chips refreshed; Neural model filled.
+   - Failure: "Could not download NAFNet: the server answered <status>." / "The downloaded NAFNet file is damaged or not the expected version. Try again." / "Could not download NAFNet (<error>)". No partial file left.
+7. Buttons "Save", "Restore defaults".
+8. Message line; errors in error colour.
 
 Behaviour:
-- Edits apply only on Save. Save validates: log folder + address non-empty else "Log folder and AI server address cannot be empty."; address valid URL else "AI server address is not a valid URL." Success "Saved."; logging switches to new folder immediately.
+- Edits apply only on Save. Save validates: log folder + address non-empty else "Log folder and AI server address cannot be empty."; address valid URL else "AI server address is not a valid URL." Model folder non-empty else "Model folder cannot be empty." Success "Saved."; logging switches to new folder immediately.
 - Restore defaults fills fields only: "Defaults restored. Press Save to keep them."
 
 ## Gaps
 - Input/output = typed paths. No file picker.
-- Param rows always show all params (e.g. angle visible for non-motion methods).
+- Param rows always show all params (e.g. angle visible for non-motion methods; all three numbers for `neural`).
+- No progress during a run; model download not cancellable.

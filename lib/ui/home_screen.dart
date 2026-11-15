@@ -150,6 +150,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // the user's output path.
     var current = input;
     final temps = <String>[];
+    final notes = <String>[];
     try {
       for (var i = 0; i < _commands.length; i++) {
         final command = _commands[i];
@@ -177,10 +178,12 @@ class _HomeScreenState extends State<HomeScreen> {
         _s.logger.info('command_done', {
           'feature': command.feature.id,
           'output': result.outputPath,
+          if (result.note != null) 'note': result.note,
         });
+        if (result.note != null) notes.add(result.note!);
         current = result.outputPath!;
       }
-      if (mounted) _setStatus('Done. Saved to $current');
+      if (mounted) _setStatus(['Done. Saved to $current', ...notes].join('\n'));
     } catch (e) {
       _s.logger.error('run_crashed', {'error': '$e'});
       if (mounted) _setStatus('Run failed: $e', error: true);

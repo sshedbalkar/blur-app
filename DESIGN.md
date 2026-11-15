@@ -32,11 +32,15 @@ Chosen for speed + format coverage over self-contained C++. Cost: app depends on
 - Found necessary by test (spec: TR-8): fade padding to mean, else edges ring across image at high strength; (1+nsr) scale, else image darkens up to 9%; line kernel one pixel wide, since anti-aliased 3 px line models sideways blur and fails.
 - Kernel mismatch + high strength -> artefacts. Inherent; user lowers strength.
 
-## D-10: Neural deblur (decided, not built)
-- ONNX Runtime, GPU (CUDA) from start. Prereq: NVIDIA driver + CUDA on machine.
-- Models: app downloads default + user adds own; all in one local folder; switchable; last used remembered.
-- App recommends best model(s) per task, with reason message.
-- Method stays user/AI-changeable; classical stays default.
+## D-10: Neural deblur
+Decided 2026-11-15, built 2026-11-16.
+- ONNX Runtime, GPU (CUDA) first. Method stays user/AI-changeable; classical stays default.
+- No usable GPU -> CPU automatically, user told (user decision; replaces "GPU only"). Cost: minutes on large photos.
+- ONNX Runtime fetched at build, bundled (~330 MB): no system package has CUDA provider. cuDNN not bundled: ~890 MB, NVIDIA proprietary licence; machine prerequisite like driver + CUDA.
+- Models: one local folder; app downloads recommended model on user's press; user adds own files; choice = saved setting. App recommends model per task with reason.
+- Recommended model: NAFNet from OpenCV Zoo. Why: MIT licence, 92 MB, restores real motion blur with no params. Its weights are stored quantised; unpacked at load (TR-9) so it runs on GPU.
+- Tiles of 512 px: whole photo exceeds 8 GB GPU memory from ~2048 px square; fixed size keeps memory ~1.4 GB for any image. Overlap + cross-fade hides seams.
+- `neural` ignores blur size/angle/strength: model has no such inputs; blending with original not requested.
 
 ## D-11: Core docs = complete spec
 Four core docs must suffice to recreate project (AGENTS.md rule 2). Consequence: UX doc carries screen layouts + exact messages; technical doc carries interfaces, formats, algorithms. `context/` stays pointers only.

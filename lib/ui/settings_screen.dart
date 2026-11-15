@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../core/ai/ai_client.dart';
 import '../core/settings/app_settings.dart';
+import '../features/deblur/neural_models.dart';
 import '../main.dart';
 
 /// The one place every global setting is shown and changed.
@@ -18,9 +19,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late final _logDir = TextEditingController(text: _settings.logDirectory);
   late final _baseUrl = TextEditingController(text: _settings.aiBaseUrl);
   late final _model = TextEditingController(text: _settings.aiModel);
+  late final _modelDir = TextEditingController(text: _settings.modelDirectory);
+  late final _neuralModel = TextEditingController(text: _settings.neuralModel);
   late bool _aiEnabled = _settings.aiEnabled;
 
   List<String> _models = [];
+  List<String> _neuralModels = [];
   String? _message;
   bool _isError = false;
   bool _busy = false;
@@ -33,6 +37,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _logDir.dispose();
     _baseUrl.dispose();
     _model.dispose();
+    _modelDir.dispose();
+    _neuralModel.dispose();
     super.dispose();
   }
 
@@ -65,11 +71,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  void _listNeuralModels() {
+    final folder = _modelDir.text.trim();
+    _s.logger.interaction('list_neural_models_pressed', {'folder': folder});
+    final models = installedModels(folder);
+    setState(() => _neuralModels = models);
+    _say(
+      models.isEmpty
+          ? 'No models in that folder yet.'
+          : 'Found ${models.length} model(s) in the folder. Pick one below.',
+    );
+  }
+
+  Future<void> _downloadRecommended() async {
+    const model = recommendedDeblurModel;
+    final folder = _modelDir.text.trim();
+    _s.logger.interaction('download_model_pressed', {
+      'model': model.fileName,
+      'folder': folder,
+    });
+    if (folder.isEmpty) {
+      _say('Model folder cannot be empty.', error: true);
+      return;
+    }
+    if (installedModels(folder).contains(model.fileName)) {
+      setState(() => _neuralModels = installedModels(folder));
+      _say('${model.name} is already installed.');
+      return;
+    }
+    setState(() => _busy = true);
+    _say('Downloading ${model.name}… 0%');
+    var shown = 0;
+    try {
+      await downloadModel(
+        model,
+        folder,
+        onProgress: (fraction) {
+          final percent = (fraction * 100).floor();
+          if (percent != shown && mounted) {
+            shown = percent;
+            _say('Downloading ${model.name}… $percent%');
+          }
+        },
+      );
+      _s.logger.info('model_downloaded', {
+        'model': model.fileName,
+        'folder': folder,
+      });
+      if (!mounted) return;
+      setState(() {
+        _neuralModels = installedModels(folder);
+        _neuralModel.text = model.fileName;
+      });
+      _say('Downloaded ${model.name}. Press Save to keep it selected.');
+    } on NeuralModelException catch (e) {
+      _s.logger.error('model_download_failed', {'error': e.message});
+      if (mounted) _say(e.message, error: true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   void _save() {
     final logDir = _logDir.text.trim();
     final baseUrl = _baseUrl.text.trim();
+    final modelDir = _modelDir.text.trim();
     if (logDir.isEmpty || baseUrl.isEmpty) {
       _say('Log folder and AI server address cannot be empty.', error: true);
+      return;
+    }
+    if (modelDir.isEmpty) {
+      _say('Model folder cannot be empty.', error: true);
       return;
     }
     final uri = Uri.tryParse(baseUrl);
@@ -82,7 +154,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ..logDirectory = logDir
       ..aiEnabled = _aiEnabled
       ..aiBaseUrl = baseUrl
-      ..aiModel = _model.text.trim();
+      ..aiModel = _model.text.trim()
+      ..modelDirectory = modelDir
+      ..neuralModel = _neuralModel.text.trim();
     try {
       _settings.save(_s.settingsPath);
     } on Exception catch (e) {
@@ -107,6 +181,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _model.text = d.aiModel;
       _aiEnabled = d.aiEnabled;
       _models = [];
+      _modelDir.text = d.modelDirectory;
+      _neuralModel.text = d.neuralModel;
+      _neuralModels = [];
     });
     _say('Defaults restored. Press Save to keep them.');
   }
@@ -188,6 +265,70 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ],
+          const SizedBox(height: 24),
+          Text('Neural blur removal', style: titles),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _modelDir,
+            decoration: const InputDecoration(
+              labelText: 'Model folder',
+              helperText: 'Put your own .onnx models here to use them',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _neuralModel,
+                  decoration: const InputDecoration(
+                    labelText: 'Neural model',
+                    helperText: 'Leave empty to choose automatically',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              OutlinedButton(
+                onPressed: _busy ? null : _listNeuralModels,
+                child: const Text('List models'),
+              ),
+            ],
+          ),
+          if (_neuralModels.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                for (final m in _neuralModels)
+                  ChoiceChip(
+                    label: Text(m),
+                    selected: _neuralModel.text == m,
+                    onSelected: (_) {
+                      _s.logger.interaction('neural_model_picked', {
+                        'model': m,
+                      });
+                      setState(() => _neuralModel.text = m);
+                    },
+                  ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 12),
+          Text(
+            deblurModelRecommendation,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: _busy ? null : _downloadRecommended,
+              icon: const Icon(Icons.download),
+              label: const Text('Download recommended model'),
+            ),
+          ),
           const SizedBox(height: 24),
           Row(
             children: [
